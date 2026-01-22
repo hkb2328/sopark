@@ -1,0 +1,26 @@
+SPARK ARCHITECTURE:
+A cluster is a collection of multiple machines connected through a network and working together as a single system. Each machine in the cluster has its own CPU cores and memory. For example, if a cluster has 10 machines and each machine has 20 CPU cores and 100 GB of RAM, then the total cluster capacity is 200 CPU cores and 1 TB of RAM.
+
+Clusters follow a master–worker architecture. One machine acts as the Master Node, while the remaining machines act as Worker Nodes. The master is responsible for coordination and scheduling, while the workers perform the actual computation. The master runs a Resource Manager, and each worker runs a Node Manager that manages resources such as memory and CPU on that machine.
+
+Spark can work with different cluster managers, such as YARN, Kubernetes, or Spark Standalone. The cluster manager’s responsibility is limited to resource allocation and container management. It does not execute Spark logic or process data.
+
+When a developer submits a Spark application, the request is sent to the cluster manager along with resource requirements such as driver memory, executor memory, number of executors, and CPU cores per executor. The cluster manager evaluates available resources in the cluster and decides where to allocate them.
+
+The first resource allocated is the Driver. The cluster manager selects a worker node and creates a container with the requested driver memory. In cluster deployment mode, this container is called the Application Master. The Application Master hosts the Spark Driver and acts as the control center for the application.
+
+Inside the Application Master, the Spark Driver is initialized. Since Spark’s core is written in JVM-based languages, every Spark application ultimately runs as a JVM main method, called the Application Driver. When using PySpark, Python code is translated through a Python wrapper into JVM instructions. In Java or Scala applications, only the Application Driver exists, whereas in Python applications, an additional PySpark driver layer is involved.
+
+Once the driver starts, it creates a SparkSession and begins processing the application logic. Spark follows lazy evaluation, meaning transformations are not executed immediately. Instead, Spark builds a logical execution plan.
+
+This logical plan is converted into a Directed Acyclic Graph (DAG). The DAG represents the complete sequence of transformations required to produce the final result. The DAG is then divided into stages based on shuffle boundaries. Each stage contains multiple tasks, where each task operates on a partition of data.
+
+After the DAG is created, the driver requests executors from the cluster manager. Executors are long-running JVM processes created inside containers on worker nodes. Each executor is allocated memory and CPU cores as specified during submission.
+
+Once executors are available, the driver sends the application code, task definitions, and required libraries to them. Executors execute tasks in parallel across data partitions. If a transformation requires data movement across executors, a shuffle operation occurs, where data is written to disk and transferred across the network.
+
+When Python User Defined Functions (UDFs) are used, each executor must also start a Python worker process in addition to the JVM. This introduces serialization overhead and inter-process communication between JVM and Python, which can significantly impact performance. For this reason, Spark’s built-in functions are preferred whenever possible.
+
+Spark provides fault tolerance through RDD lineage and recomputation. If an executor fails, the driver reassigns the failed tasks to another executor using the original transformation lineage. Executors also send heartbeat messages to the driver to report health and progress.
+
+After all tasks complete successfully, the final results are returned to the driver. The driver then releases all executors, and the cluster manager deallocates the containers. This marks the end of the Spark application lifecycle.
